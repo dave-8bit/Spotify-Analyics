@@ -13,6 +13,26 @@ const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID!;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET!;
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI!;
 
+// **Initial route to start Spotify login**
+router.get("/spotify", (_req: Request, res: Response) => {
+  const scope = [
+    "user-read-private",
+    "user-read-email",
+    "user-top-read",
+    "user-read-recently-played"
+  ].join(" ");
+
+  const queryParams = querystring.stringify({
+    client_id: CLIENT_ID,
+    response_type: "code",
+    redirect_uri: REDIRECT_URI,
+    scope
+  });
+
+  res.redirect(`https://accounts.spotify.com/authorize?${queryParams}`);
+});
+
+// **Callback route for Spotify**
 router.get("/spotify/callback", async (req: Request, res: Response) => {
   const code = req.query.code as string;
   if (!code) return res.status(400).send("No code provided");
@@ -77,7 +97,7 @@ router.get("/spotify/callback", async (req: Request, res: Response) => {
     }
 
     // Redirect to frontend dashboard
-    res.redirect("http://localhost:3000/dashboard"); // Adjust frontend URL
+    res.redirect("http://localhost:5173/dashboard"); // This is the frontend URL, adjust if needed.
   } catch (err) {
     console.error(err);
     res.status(500).send("Spotify auth error");
