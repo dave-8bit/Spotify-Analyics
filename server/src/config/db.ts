@@ -14,7 +14,10 @@ let db: Db;
 
 export const connectDB = async (): Promise<Db> => {
   if (db) return db;
-  client = new MongoClient(MONGO_URI);
+  client = new MongoClient(MONGO_URI, {
+    tls: true,
+    tlsAllowInvalidCertificates: false,
+  });
   await client.connect();
   db = client.db("spotify-analytics");
   console.log("MongoDB connected");

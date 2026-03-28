@@ -11,6 +11,10 @@
   "license": "ISC",
   "devDependencies": {
     "@types/cors": "^2.8.19",
+    "@types/express-session": "^1.18.2",
     "concurrently": "^9.2.1"
+  },
+  "dependencies": {
+    "express-session": "^1.19.0"
   }
 }

@@ -10,6 +10,13 @@ import { fetchRecentlyPlayed } from "../services/spotifyService";
 
 dotenv.config();
 
+declare module "express-session" {
+  interface SessionData {
+    userId?: string;
+    oauthState?: string;
+  }
+}
+
 const router = Router();
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID!;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET!;
@@ -122,7 +129,6 @@ router.get("/spotify/callback", async (req: Request, res: Response) => {
 
     req.session.userId = profile.id;
 
-    // Fire-and-forget background sync
     syncRecentTracks(profile.id, access_token, tracks).catch((err) =>
       console.error("[sync] Background track sync failed:", err)
     );
@@ -204,3 +210,5 @@ async function syncRecentTracks(
     await tracks.bulkWrite(ops, { ordered: false });
   }
 }
+
+export default router;
