@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import session from "express-session";
 import authRoutes from "./routes/auth";
+import analyticsRoutes from "./routes/analytics";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -23,12 +24,13 @@ app.use(
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   })
 );
 
 app.use("/auth", authRoutes);
+app.use("/analytics", analyticsRoutes);
 
 app.get("/", (_req, res) => res.send("API is running"));
 

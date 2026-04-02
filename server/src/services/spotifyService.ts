@@ -82,7 +82,7 @@ export async function fetchRecentlyPlayed(accessToken: string, limit = 20) {
 export async function fetchTopTracks(
   accessToken: string,
   timeRange: "short_term" | "medium_term" | "long_term" = "medium_term",
-  limit = 50
+  limit = 5
 ) {
   try {
     const res = await axios.get(`${SPOTIFY_API}/me/top/tracks`, {
@@ -99,7 +99,7 @@ export async function fetchTopTracks(
 export async function fetchTopArtists(
   accessToken: string,
   timeRange: "short_term" | "medium_term" | "long_term" = "medium_term",
-  limit = 50
+  limit = 5
 ) {
   try {
     const res = await axios.get(`${SPOTIFY_API}/me/top/artists`, {
@@ -113,7 +113,42 @@ export async function fetchTopArtists(
   }
 }
 
-export async function fetchArtistGenres(artistIds: string[], accessToken: string) {
+export async function fetchUserPlaylists(accessToken: string) {
+  try {
+    const res = await axios.get(`${SPOTIFY_API}/me/playlists`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      params: { limit: 50 },
+    });
+    return res.data.items as SpotifyPlaylist[];
+  } catch (err) {
+    handleSpotifyError("fetchUserPlaylists", err);
+    throw err;
+  }
+}
+
+export async function fetchPlaylistTracks(
+  accessToken: string,
+  playlistId: string
+) {
+  try {
+    const res = await axios.get(
+      `${SPOTIFY_API}/playlists/${playlistId}/tracks`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { limit: 100, fields: "items(added_at,track(id,name,artists,album,duration_ms))" },
+      }
+    );
+    return res.data.items as SpotifyPlaylistTrackItem[];
+  } catch (err) {
+    handleSpotifyError("fetchPlaylistTracks", err);
+    throw err;
+  }
+}
+
+export async function fetchArtistGenres(
+  artistIds: string[],
+  accessToken: string
+) {
   if (artistIds.length === 0) return [];
 
   const results: SpotifyArtist[] = [];
@@ -186,6 +221,22 @@ export interface SpotifyArtist {
 export interface SpotifyPlayHistoryItem {
   track: SpotifyTrack;
   played_at: string;
+}
+
+export interface SpotifyPlaylist {
+  id: string;
+  name: string;
+  description: string | null;
+  images: Array<{ url: string }>;
+  tracks: { total: number };
+  public: boolean;
+  external_urls: { spotify: string };
+  snapshot_id: string;
+}
+
+export interface SpotifyPlaylistTrackItem {
+  added_at: string;
+  track: SpotifyTrack;
 }
 
 // ---------------------------------------------------------------------------
