@@ -1,11 +1,13 @@
 import express from "express";
 import cors from "cors";
-import session from "express-session";
 import authRoutes from "./routes/auth";
 import analyticsRoutes from "./routes/analytics";
 import dotenv from "dotenv";
 
 dotenv.config();
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const session = require("express-session");
 
 const app = express();
 
@@ -16,18 +18,16 @@ app.use(cors({
 
 app.use(express.json());
 
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET!,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    },
-  })
-);
+app.use(session({
+  secret: process.env.SESSION_SECRET!,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  },
+}));
 
 app.use("/auth", authRoutes);
 app.use("/analytics", analyticsRoutes);

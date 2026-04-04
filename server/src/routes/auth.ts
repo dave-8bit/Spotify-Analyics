@@ -10,23 +10,31 @@ import { fetchRecentlyPlayed } from "../services/spotifyService";
 
 dotenv.config();
 
-declare module "express-session" {
-  interface SessionData {
-    userId?: string;
-    oauthState?: string;
-  }
-}
-
 const router = Router();
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID!;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET!;
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI!;
 const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
 
+// ---------------------------------------------------------------------------
+// Session helper
+// ---------------------------------------------------------------------------
+
+type AppSession = {
+  userId?: string;
+  oauthState?: string;
+  destroy: (cb: () => void) => void;
+};
+
+function getSession(req: Request): AppSession {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (req as any).session as AppSession;
+}
+
 // --- GET /auth/spotify ---
 router.get("/spotify", (req: Request, res: Response) => {
   const state = crypto.randomBytes(16).toString("hex");
-  req.session.oauthState = state;
+  getSession(req).oauthState = state;
 
   const scope = [
     "user-read-private",
@@ -51,15 +59,16 @@ router.get("/spotify", (req: Request, res: Response) => {
 // --- GET /auth/spotify/callback ---
 router.get("/spotify/callback", async (req: Request, res: Response) => {
   const { code, state, error } = req.query;
+  const session = getSession(req);
 
   if (error) {
     return res.redirect(`${FRONTEND_URL}/error?reason=spotify_denied`);
   }
 
-  if (!state || state !== req.session.oauthState) {
+  if (!state || state !== session.oauthState) {
     return res.redirect(`${FRONTEND_URL}/error?reason=invalid_state`);
   }
-  delete req.session.oauthState;
+  delete session.oauthState;
 
   if (!code || typeof code !== "string") {
     return res.status(400).json({ error: "No authorization code provided" });
@@ -127,7 +136,7 @@ router.get("/spotify/callback", async (req: Request, res: Response) => {
       { upsert: true }
     );
 
-    req.session.userId = profile.id;
+    getSession(req).userId = profile.id;
 
     syncRecentTracks(profile.id, access_token, tracks).catch((err) =>
       console.error("[sync] Background track sync failed:", err)
@@ -142,7 +151,8 @@ router.get("/spotify/callback", async (req: Request, res: Response) => {
 
 // --- GET /auth/me ---
 router.get("/me", async (req: Request, res: Response) => {
-  if (!req.session.userId) {
+  const session = getSession(req);
+  if (!session.userId) {
     return res.status(401).json({ error: "Not authenticated" });
   }
 
@@ -150,7 +160,7 @@ router.get("/me", async (req: Request, res: Response) => {
     const db = await connectDB();
     const users = getUsersCollection(db);
     const user = await users.findOne(
-      { spotifyId: req.session.userId },
+      { spotifyId: session.userId },
       { projection: { accessToken: 0, refreshToken: 0, tokenExpiresAt: 0 } }
     );
 
@@ -164,7 +174,7 @@ router.get("/me", async (req: Request, res: Response) => {
 
 // --- POST /auth/logout ---
 router.post("/logout", (req: Request, res: Response) => {
-  req.session.destroy(() => {
+  getSession(req).destroy(() => {
     res.clearCookie("connect.sid");
     res.json({ message: "Logged out" });
   });

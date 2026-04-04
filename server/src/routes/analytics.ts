@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import {
   getTop5MostPlayed,
   getTop5Tracks,
@@ -8,18 +8,24 @@ import {
   getPlaylistWithTracks,
 } from "../services/analyticsService";
 
-declare module "express-session" {
-  interface SessionData {
-    userId?: string;
-    oauthState?: string;
-  }
+// ---------------------------------------------------------------------------
+// Session helper
+// ---------------------------------------------------------------------------
+
+type AppSession = {
+  userId?: string;
+};
+
+function getSession(req: Request): AppSession {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (req as any).session as AppSession;
 }
 
 const router = Router();
 
-// Auth guard — applied to all analytics routes
-router.use((req: Request, res: Response, next) => {
-  if (!req.session.userId) {
+// Auth guard
+router.use((req: Request, res: Response, next: NextFunction) => {
+  if (!getSession(req).userId) {
     res.status(401).json({ error: "Not authenticated" });
     return;
   }
@@ -32,7 +38,7 @@ router.use((req: Request, res: Response, next) => {
 router.get("/top-tracks", async (req: Request, res: Response) => {
   try {
     const timeRange = validateTimeRange(req.query.time_range);
-    const data = await getTop5Tracks(req.session.userId!, timeRange);
+    const data = await getTop5Tracks(getSession(req).userId!, timeRange);
     res.json({ data });
   } catch (err) {
     console.error("[analytics/top-tracks]", err);
@@ -46,7 +52,7 @@ router.get("/top-tracks", async (req: Request, res: Response) => {
 router.get("/top-artists", async (req: Request, res: Response) => {
   try {
     const timeRange = validateTimeRange(req.query.time_range);
-    const data = await getTop5Artists(req.session.userId!, timeRange);
+    const data = await getTop5Artists(getSession(req).userId!, timeRange);
     res.json({ data });
   } catch (err) {
     console.error("[analytics/top-artists]", err);
@@ -59,7 +65,7 @@ router.get("/top-artists", async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 router.get("/most-played", async (req: Request, res: Response) => {
   try {
-    const data = await getTop5MostPlayed(req.session.userId!);
+    const data = await getTop5MostPlayed(getSession(req).userId!);
     res.json({ data });
   } catch (err) {
     console.error("[analytics/most-played]", err);
@@ -72,7 +78,7 @@ router.get("/most-played", async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 router.get("/recently-played", async (req: Request, res: Response) => {
   try {
-    const data = await getRecentlyPlayed(req.session.userId!);
+    const data = await getRecentlyPlayed(getSession(req).userId!);
     res.json({ data });
   } catch (err) {
     console.error("[analytics/recently-played]", err);
@@ -85,7 +91,7 @@ router.get("/recently-played", async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 router.get("/playlists", async (req: Request, res: Response) => {
   try {
-    const data = await syncAndGetPlaylists(req.session.userId!);
+    const data = await syncAndGetPlaylists(getSession(req).userId!);
     res.json({ data });
   } catch (err) {
     console.error("[analytics/playlists]", err);
@@ -98,9 +104,10 @@ router.get("/playlists", async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 router.get("/playlists/:playlistId", async (req: Request, res: Response) => {
   try {
+    const playlistId = String(req.params.playlistId);
     const data = await getPlaylistWithTracks(
-      req.session.userId!,
-      req.params.playlistId
+      getSession(req).userId!,
+      playlistId
     );
     res.json({ data });
   } catch (err) {
