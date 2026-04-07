@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAnalytics } from '../hooks/useAnalytics';
 import TopTracks from '../components/TopTracks';
@@ -21,11 +21,13 @@ export default function Dashboard() {
     refetch,
   } = useAnalytics(timeRange);
 
-  // Not authenticated — redirect to login
-  if (!authLoading && !user) {
-    window.location.href = '/api/auth/spotify';
-    return null;
-  }
+  useEffect(() => {
+    if (!authLoading && !user) {
+      window.location.href = '/api/auth/spotify';
+    }
+  }, [authLoading, user]);
+
+  if (!authLoading && !user) return null;
 
   if (authLoading) {
     return <div className="loading-screen">Loading...</div>;
