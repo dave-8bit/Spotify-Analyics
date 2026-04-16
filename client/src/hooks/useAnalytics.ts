@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { TimeRange } from '../types';
 import {
   getTopTracks,
@@ -34,7 +34,7 @@ export function useAnalytics(timeRange: TimeRange) {
 
   const fetchAll = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true, error: null }));
-
+  // All that i am trying to fetch for now possible updates can come later.
     try {
       const [topTracks, topArtists, mostPlayed, recentlyPlayed, playlists] =
         await Promise.all([
@@ -58,10 +58,14 @@ export function useAnalytics(timeRange: TimeRange) {
       setState((prev) => ({
         ...prev,
         loading: false,
-        error: 'Failed to load data. Please try again.',
+        error: 'Failed to load data. Please try again later.',
       }));
     }
   }, [timeRange]);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
   return { ...state, refetch: fetchAll };
 }

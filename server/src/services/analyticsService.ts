@@ -3,12 +3,29 @@ import { getTracksCollection } from "../models/Track";
 import { getPlaylistsCollection } from "../models/Playlist";
 import {
   getValidAccessToken,
+  SpotifyAPIError,
   fetchTopTracks,
   fetchTopArtists,
   fetchRecentlyPlayed,
   fetchUserPlaylists,
   fetchPlaylistTracks,
 } from "./spotifyService";
+
+async function withSpotifyRetry<T>(
+  userId: string,
+  fn: (accessToken: string) => Promise<T>
+): Promise<T> {
+  const accessToken = await getValidAccessToken(userId);
+  try {
+    return await fn(accessToken);
+  } catch (err) {
+    if (err instanceof SpotifyAPIError && err.status === 401) {
+      const refreshedToken = await getValidAccessToken(userId, true);
+      return await fn(refreshedToken);
+    }
+    throw err;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Top 5 most played songs from listening history in DB
@@ -60,8 +77,9 @@ export async function getTop5Tracks(
   userId: string,
   timeRange: "short_term" | "medium_term" | "long_term" = "medium_term"
 ) {
-  const accessToken = await getValidAccessToken(userId);
-  const tracks = await fetchTopTracks(accessToken, timeRange, 5);
+  const tracks = await withSpotifyRetry(userId, (accessToken) =>
+    fetchTopTracks(accessToken, timeRange, 5)
+  );
 
   return tracks.map((track, index) => ({
     rank: index + 1,
@@ -85,8 +103,9 @@ export async function getTop5Artists(
   userId: string,
   timeRange: "short_term" | "medium_term" | "long_term" = "medium_term"
 ) {
-  const accessToken = await getValidAccessToken(userId);
-  const artists = await fetchTopArtists(accessToken, timeRange, 5);
+  const artists = await withSpotifyRetry(userId, (accessToken) =>
+    fetchTopArtists(accessToken, timeRange, 5)
+  );
 
   return artists.map((artist, index) => ({
     rank: index + 1,
@@ -105,8 +124,9 @@ export async function getTop5Artists(
 // ---------------------------------------------------------------------------
 
 export async function getRecentlyPlayed(userId: string) {
-  const accessToken = await getValidAccessToken(userId);
-  const items = await fetchRecentlyPlayed(accessToken, 20);
+  const items = await withSpotifyRetry(userId, (accessToken) =>
+    fetchRecentlyPlayed(accessToken, 20)
+  );
 
   return items.map((item) => ({
     trackId: item.track.id,
@@ -123,14 +143,17 @@ export async function getRecentlyPlayed(userId: string) {
 // ---------------------------------------------------------------------------
 
 export async function syncAndGetPlaylists(userId: string) {
-  const accessToken = await getValidAccessToken(userId);
   const db = await connectDB();
   const playlists = getPlaylistsCollection(db);
 
-  const spotifyPlaylists = await fetchUserPlaylists(accessToken);
+  const spotifyPlaylists = await withSpotifyRetry(userId, (accessToken) =>
+    fetchUserPlaylists(accessToken)
+  );
 
   for (const pl of spotifyPlaylists) {
-    const tracks = await fetchPlaylistTracks(accessToken, pl.id);
+    const tracks = await withSpotifyRetry(userId, (accessToken) =>
+      fetchPlaylistTracks(accessToken, pl.id)
+    );
 
     const playlistTracks = tracks
       .filter((item) => item.track) // filter null tracks (deleted songs)

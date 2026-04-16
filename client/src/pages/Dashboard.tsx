@@ -38,7 +38,7 @@ export default function Dashboard() {
       {/* Header */}
       <header className="dashboard-header">
         <div className="header-left">
-          <span className="logo">🎵 Spotify Analytics</span>
+          <span className="logo">Spotify Analytics</span>
         </div>
         <div className="header-right">
           {user?.imageUrl && (

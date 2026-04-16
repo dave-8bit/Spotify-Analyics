@@ -5,11 +5,20 @@ import { getUsersCollection } from "../models/User";
 const SPOTIFY_API = "https://api.spotify.com/v1";
 const TOKEN_URL = "https://accounts.spotify.com/api/token";
 
+export class SpotifyAPIError extends Error {
+  status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Token management
 // ---------------------------------------------------------------------------
 
-export async function getValidAccessToken(userId: string): Promise<string> {
+export async function getValidAccessToken(userId: string, forceRefresh = false): Promise<string> {
   const db = await connectDB();
   const users = getUsersCollection(db);
   const user = await users.findOne({ spotifyId: userId });
@@ -20,7 +29,7 @@ export async function getValidAccessToken(userId: string): Promise<string> {
   const expiresAt = new Date(user.tokenExpiresAt);
   const bufferMs = 5 * 60 * 1000;
 
-  if (expiresAt.getTime() - now.getTime() > bufferMs) {
+  if (!forceRefresh && expiresAt.getTime() - now.getTime() > bufferMs) {
     return user.accessToken;
   }
 
@@ -179,13 +188,13 @@ function handleSpotifyError(fn: string, err: unknown): never {
     const message = err.response?.data?.error?.message ?? err.message;
 
     if (status === 401) {
-      throw new Error(`[${fn}] Access token expired or invalid`);
+      throw new SpotifyAPIError(`[${fn}] Access token expired or invalid`, 401);
     }
     if (status === 429) {
       const retryAfter = err.response?.headers?.["retry-after"] ?? "?";
-      throw new Error(`[${fn}] Rate limited. Retry after ${retryAfter}s`);
+      throw new SpotifyAPIError(`[${fn}] Rate limited. Retry after ${retryAfter}s`, 429);
     }
-    throw new Error(`[${fn}] Spotify API error ${status}: ${message}`);
+    throw new SpotifyAPIError(`[${fn}] Spotify API error ${status}: ${message}`, status);
   }
   throw err;
 }
