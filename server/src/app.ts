@@ -12,6 +12,8 @@ const session = require("express-session");
 
 const app = express();
 
+app.set("trust proxy", 1);
+
 app.use(cors({
   origin: process.env.FRONTEND_URL ?? "https://spotify-analyics.onrender.com",
   credentials: true,
