@@ -19,7 +19,7 @@ export default function Dashboard() {
     loading,
     error,
     refetch,
-  } = useAnalytics(timeRange);
+  } = useAnalytics(timeRange, !!user);
 
   useEffect(() => {
     if (!authLoading && !user) {

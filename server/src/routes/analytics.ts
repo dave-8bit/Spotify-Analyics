@@ -7,6 +7,7 @@ import {
   syncAndGetPlaylists,
   getPlaylistWithTracks,
 } from "../services/analyticsService";
+import { SpotifyAPIError } from "../services/spotifyService";
 
 // ---------------------------------------------------------------------------
 // Session helper
@@ -32,6 +33,26 @@ router.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+function handleAnalyticsError(
+  res: Response,
+  err: unknown,
+  defaultMessage: string,
+  routeName: string
+) {
+  if (err instanceof Error) {
+    console.error(`[analytics/${routeName}]`, err.stack ?? err.message);
+  } else {
+    console.error(`[analytics/${routeName}]`, err);
+  }
+
+  if (err instanceof SpotifyAPIError && err.status) {
+    res.status(err.status).json({ error: defaultMessage });
+    return;
+  }
+
+  res.status(500).json({ error: defaultMessage });
+}
+
 // ---------------------------------------------------------------------------
 // GET /analytics/top-tracks
 // ---------------------------------------------------------------------------
@@ -41,8 +62,7 @@ router.get("/top-tracks", async (req: Request, res: Response) => {
     const data = await getTop5Tracks(getSession(req).userId!, timeRange);
     res.json({ data });
   } catch (err) {
-    console.error("[analytics/top-tracks]", err);
-    res.status(500).json({ error: "Failed to fetch top tracks" });
+    handleAnalyticsError(res, err, "Failed to fetch top tracks", "top-tracks");
   }
 });
 
@@ -55,8 +75,7 @@ router.get("/top-artists", async (req: Request, res: Response) => {
     const data = await getTop5Artists(getSession(req).userId!, timeRange);
     res.json({ data });
   } catch (err) {
-    console.error("[analytics/top-artists]", err);
-    res.status(500).json({ error: "Failed to fetch top artists" });
+    handleAnalyticsError(res, err, "Failed to fetch top artists", "top-artists");
   }
 });
 
@@ -68,8 +87,7 @@ router.get("/most-played", async (req: Request, res: Response) => {
     const data = await getTop5MostPlayed(getSession(req).userId!);
     res.json({ data });
   } catch (err) {
-    console.error("[analytics/most-played]", err);
-    res.status(500).json({ error: "Failed to fetch most played tracks" });
+    handleAnalyticsError(res, err, "Failed to fetch most played tracks", "most-played");
   }
 });
 
@@ -81,8 +99,7 @@ router.get("/recently-played", async (req: Request, res: Response) => {
     const data = await getRecentlyPlayed(getSession(req).userId!);
     res.json({ data });
   } catch (err) {
-    console.error("[analytics/recently-played]", err);
-    res.status(500).json({ error: "Failed to fetch recently played" });
+    handleAnalyticsError(res, err, "Failed to fetch recently played", "recently-played");
   }
 });
 
@@ -94,8 +111,7 @@ router.get("/playlists", async (req: Request, res: Response) => {
     const data = await syncAndGetPlaylists(getSession(req).userId!);
     res.json({ data });
   } catch (err) {
-    console.error("[analytics/playlists]", err);
-    res.status(500).json({ error: "Failed to fetch playlists" });
+    handleAnalyticsError(res, err, "Failed to fetch playlists", "playlists");
   }
 });
 
@@ -111,8 +127,7 @@ router.get("/playlists/:playlistId", async (req: Request, res: Response) => {
     );
     res.json({ data });
   } catch (err) {
-    console.error("[analytics/playlists/:id]", err);
-    res.status(500).json({ error: "Failed to fetch playlist" });
+    handleAnalyticsError(res, err, "Failed to fetch playlist", "playlists/:id");
   }
 });
 

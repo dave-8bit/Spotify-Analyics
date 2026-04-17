@@ -14,7 +14,7 @@ const router = Router();
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID!;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET!;
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI!;
-const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
+const DEFAULT_FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
 
 // ---------------------------------------------------------------------------
 // Session helper
@@ -23,8 +23,18 @@ const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
 type AppSession = {
   userId?: string;
   oauthState?: string;
+  oauthOrigin?: string;
   destroy: (cb: () => void) => void;
 };
+
+function getFrontendUrl(req: Request): string {
+  const session = getSession(req);
+  return (
+    session.oauthOrigin ??
+    (req.headers.origin as string | undefined) ??
+    DEFAULT_FRONTEND_URL
+  );
+}
 
 function getSession(req: Request): AppSession {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,13 +44,18 @@ function getSession(req: Request): AppSession {
 // --- GET /auth/spotify ---
 router.get("/spotify", (req: Request, res: Response) => {
   const state = crypto.randomBytes(16).toString("hex");
-  getSession(req).oauthState = state;
+  const session = getSession(req);
+  session.oauthState = state;
+  session.oauthOrigin =
+    (req.headers.origin as string | undefined) ?? DEFAULT_FRONTEND_URL;
 
   const scope = [
     "user-read-private",
     "user-read-email",
     "user-read-recently-played",
     "user-top-read",
+    "playlist-read-private",
+    "playlist-read-collaborative",
   ].join(" ");
 
   res.redirect(
@@ -51,7 +66,7 @@ router.get("/spotify", (req: Request, res: Response) => {
         redirect_uri: REDIRECT_URI,
         scope,
         state,
-        show_dialog: "false",
+        show_dialog: "true",
       })
   );
 });
@@ -61,12 +76,14 @@ router.get("/spotify/callback", async (req: Request, res: Response) => {
   const { code, state, error } = req.query;
   const session = getSession(req);
 
+  const frontendUrl = getFrontendUrl(req);
+
   if (error) {
-    return res.redirect(`${FRONTEND_URL}/error?reason=spotify_denied`);
+    return res.redirect(`${frontendUrl}/error?reason=spotify_denied`);
   }
 
   if (!state || state !== session.oauthState) {
-    return res.redirect(`${FRONTEND_URL}/error?reason=invalid_state`);
+    return res.redirect(`${frontendUrl}/error?reason=invalid_state`);
   }
   delete session.oauthState;
 
@@ -142,10 +159,10 @@ router.get("/spotify/callback", async (req: Request, res: Response) => {
       console.error("[sync] Background track sync failed:", err)
     );
 
-    return res.redirect(`${FRONTEND_URL}/dashboard`);
+    return res.redirect(`${frontendUrl}/dashboard`);
   } catch (err) {
     console.error("[auth/callback] Error:", err);
-    return res.redirect(`${FRONTEND_URL}/error?reason=auth_failed`);
+    return res.redirect(`${frontendUrl}/error?reason=auth_failed`);
   }
 });
 

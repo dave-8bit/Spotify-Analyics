@@ -111,10 +111,10 @@ export async function getTop5Artists(
     rank: index + 1,
     artistId: artist.id,
     name: artist.name,
-    genres: artist.genres.slice(0, 3),
-    imageUrl: artist.images[0]?.url ?? null,
-    popularity: artist.popularity,
-    followers: artist.followers.total,
+    genres: artist.genres?.slice(0, 3) ?? [],
+    imageUrl: artist.images?.[0]?.url ?? null,
+    popularity: artist.popularity ?? 0,
+    followers: artist.followers?.total ?? 0,
     spotifyUrl: artist.external_urls.spotify,
   }));
 }
@@ -151,22 +151,41 @@ export async function syncAndGetPlaylists(userId: string) {
   );
 
   for (const pl of spotifyPlaylists) {
-    const tracks = await withSpotifyRetry(userId, (accessToken) =>
-      fetchPlaylistTracks(accessToken, pl.id)
-    );
+    let playlistTracks: Array<{
+      trackId: string;
+      name: string;
+      artist: string;
+      artistId: string | null;
+      albumName: string | null;
+      albumImageUrl: string | null;
+      durationMs: number | null;
+      addedAt: Date;
+    }> = [];
 
-    const playlistTracks = tracks
-      .filter((item) => item.track) // filter null tracks (deleted songs)
-      .map((item) => ({
-        trackId: item.track.id,
-        name: item.track.name,
-        artist: item.track.artists[0]?.name ?? "Unknown",
-        artistId: item.track.artists[0]?.id ?? null,
-        albumName: item.track.album?.name ?? null,
-        albumImageUrl: item.track.album?.images?.[0]?.url ?? null,
-        durationMs: item.track.duration_ms ?? null,
-        addedAt: new Date(item.added_at),
-      }));
+    try {
+      const tracks = await withSpotifyRetry(userId, (accessToken) =>
+        fetchPlaylistTracks(accessToken, pl.id)
+      );
+
+      playlistTracks = tracks
+        .filter((item) => item.track)
+        .map((item) => ({
+          trackId: item.track.id,
+          name: item.track.name,
+          artist: item.track.artists[0]?.name ?? "Unknown",
+          artistId: item.track.artists[0]?.id ?? null,
+          albumName: item.track.album?.name ?? null,
+          albumImageUrl: item.track.album?.images?.[0]?.url ?? null,
+          durationMs: item.track.duration_ms ?? null,
+          addedAt: new Date(item.added_at),
+        }));
+    } catch (err) {
+      console.warn(
+        `[analytics/playlists] Skipping tracks for playlist ${pl.id} due to error:`,
+        err instanceof Error ? err.message : err
+      );
+      playlistTracks = [];
+    }
 
     await playlists.updateOne(
       { userId, playlistId: pl.id },
@@ -177,7 +196,7 @@ export async function syncAndGetPlaylists(userId: string) {
           name: pl.name,
           description: pl.description,
           imageUrl: pl.images?.[0]?.url ?? null,
-          trackCount: pl.tracks.total,
+          trackCount: pl.tracks?.total ?? playlistTracks.length,
           isPublic: pl.public ?? false,
           spotifyUrl: pl.external_urls.spotify,
           snapshotId: pl.snapshot_id,

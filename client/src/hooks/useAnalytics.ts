@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import axios from 'axios';
 import type { TimeRange } from '../types';
 import {
   getTopTracks,
@@ -29,7 +30,7 @@ const initialState: AnalyticsState = {
   error: null,
 };
 
-export function useAnalytics(timeRange: TimeRange) {
+export function useAnalytics(timeRange: TimeRange, enabled = true) {
   const [state, setState] = useState<AnalyticsState>(initialState);
 
   const fetchAll = useCallback(async () => {
@@ -54,18 +55,24 @@ export function useAnalytics(timeRange: TimeRange) {
         loading: false,
         error: null,
       });
-    } catch {
+    } catch (err) {
+      const message = axios.isAxiosError(err)
+        ? err.response?.data?.error ?? err.message
+        : err instanceof Error
+        ? err.message
+        : 'Failed to load data. Please try again later.';
       setState((prev) => ({
         ...prev,
         loading: false,
-        error: 'Failed to load data. Please try again later.',
+        error: String(message),
       }));
     }
   }, [timeRange]);
 
   useEffect(() => {
+    if (!enabled) return;
     fetchAll();
-  }, [fetchAll]);
+  }, [fetchAll, enabled]);
 
   return { ...state, refetch: fetchAll };
 }

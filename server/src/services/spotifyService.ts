@@ -190,6 +190,12 @@ function handleSpotifyError(fn: string, err: unknown): never {
     if (status === 401) {
       throw new SpotifyAPIError(`[${fn}] Access token expired or invalid`, 401);
     }
+    if (status === 403) {
+      const scopeMessage = message.includes("Insufficient client scope")
+        ? "Missing playlist permissions. Please log in again and grant Spotify playlist access."
+        : `Spotify API forbidden: ${message}`;
+      throw new SpotifyAPIError(`[${fn}] ${scopeMessage}`, 403);
+    }
     if (status === 429) {
       const retryAfter = err.response?.headers?.["retry-after"] ?? "?";
       throw new SpotifyAPIError(`[${fn}] Rate limited. Retry after ${retryAfter}s`, 429);
@@ -220,10 +226,10 @@ export interface SpotifyTrack {
 export interface SpotifyArtist {
   id: string;
   name: string;
-  genres: string[];
-  images: Array<{ url: string }>;
-  popularity: number;
-  followers: { total: number };
+  genres?: string[];
+  images?: Array<{ url: string }>;
+  popularity?: number;
+  followers?: { total: number };
   external_urls: { spotify: string };
 }
 
