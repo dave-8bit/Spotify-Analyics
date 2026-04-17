@@ -75,10 +75,10 @@ export async function getTop5MostPlayed(userId: string) {
 
 export async function getTop5Tracks(
   userId: string,
-  timeRange: "short_term" | "medium_term" | "long_term" = "medium_term"
+  timeRange: "one_week" | "short_term" | "medium_term" | "long_term" = "medium_term"
 ) {
   const tracks = await withSpotifyRetry(userId, (accessToken) =>
-    fetchTopTracks(accessToken, timeRange, 5)
+    fetchTopTracks(accessToken, normalizeTimeRange(timeRange), 5)
   );
 
   return tracks.map((track, index) => ({
@@ -88,7 +88,7 @@ export async function getTop5Tracks(
     artist: track.artists[0]?.name ?? "Unknown",
     artistId: track.artists[0]?.id ?? null,
     albumName: track.album.name,
-    albumImageUrl: track.album.images[0]?.url ?? null,
+    albumImageUrl: track.album.images?.[0]?.url ?? null,
     popularity: track.popularity,
     previewUrl: track.preview_url,
     spotifyUrl: track.external_urls.spotify,
@@ -99,12 +99,18 @@ export async function getTop5Tracks(
 // Top 5 artists from Spotify API
 // ---------------------------------------------------------------------------
 
+function normalizeTimeRange(
+  timeRange: "one_week" | "short_term" | "medium_term" | "long_term"
+): "short_term" | "medium_term" | "long_term" {
+  return timeRange === "one_week" ? "short_term" : timeRange;
+}
+
 export async function getTop5Artists(
   userId: string,
-  timeRange: "short_term" | "medium_term" | "long_term" = "medium_term"
+  timeRange: "one_week" | "short_term" | "medium_term" | "long_term" = "medium_term"
 ) {
   const artists = await withSpotifyRetry(userId, (accessToken) =>
-    fetchTopArtists(accessToken, timeRange, 5)
+    fetchTopArtists(accessToken, normalizeTimeRange(timeRange), 5)
   );
 
   return artists.map((artist, index) => ({
@@ -117,6 +123,68 @@ export async function getTop5Artists(
     followers: artist.followers?.total ?? 0,
     spotifyUrl: artist.external_urls.spotify,
   }));
+}
+
+export async function getTop5Albums(
+  userId: string,
+  timeRange: "one_week" | "short_term" | "medium_term" | "long_term" = "medium_term"
+) {
+  const tracks = await withSpotifyRetry(userId, (accessToken) =>
+    fetchTopTracks(accessToken, normalizeTimeRange(timeRange), 20)
+  );
+
+  const albumCounts = tracks.reduce((acc, track) => {
+    const album = track.album;
+    if (!album?.id) return acc;
+
+    const key = album.id;
+    const existing = acc.get(key);
+    const base = {
+      albumId: album.id,
+      name: album.name,
+      artist: album.artists?.[0]?.name ?? 'Unknown',
+      imageUrl: album.images?.[0]?.url ?? null,
+      releaseDate: album.release_date ?? null,
+      totalTracks: album.total_tracks ?? 0,
+      popularity: album.popularity ?? 0,
+      spotifyUrl: album.external_urls.spotify,
+      count: 0,
+    };
+
+    if (existing) {
+      existing.count += 1;
+      existing.popularity = Math.max(existing.popularity, album.popularity ?? 0);
+    } else {
+      acc.set(key, { ...base, count: 1 });
+    }
+
+    return acc;
+  }, new Map<string, {
+    albumId: string;
+    name: string;
+    artist: string;
+    imageUrl: string | null;
+    releaseDate: string | null;
+    totalTracks: number;
+    popularity: number;
+    spotifyUrl: string;
+    count: number;
+  }>());
+
+  return Array.from(albumCounts.values())
+    .sort((a, b) => b.count - a.count || b.popularity - a.popularity)
+    .slice(0, 5)
+    .map((album, index) => ({
+      rank: index + 1,
+      albumId: album.albumId,
+      name: album.name,
+      artist: album.artist,
+      imageUrl: album.imageUrl,
+      releaseDate: album.releaseDate,
+      totalTracks: album.totalTracks,
+      popularity: album.popularity,
+      spotifyUrl: album.spotifyUrl,
+    }));
 }
 
 // ---------------------------------------------------------------------------
@@ -133,7 +201,7 @@ export async function getRecentlyPlayed(userId: string) {
     name: item.track.name,
     artist: item.track.artists[0]?.name ?? "Unknown",
     albumName: item.track.album.name,
-    albumImageUrl: item.track.album.images[0]?.url ?? null,
+    albumImageUrl: item.track.album.images?.[0]?.url ?? null,
     playedAt: item.played_at,
   }));
 }

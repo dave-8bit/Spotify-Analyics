@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useAnalytics } from '../hooks/useAnalytics';
 import TopTracks from '../components/TopTracks';
 import TopArtists from '../components/TopArtists';
+import TopAlbums from '../components/TopAlbums.tsx';
 import Playlists from '../components/Playlists';
 import TimeRangeSelector from '../components/TimeRangeSelector';
 import type { TimeRange } from '../types';
@@ -14,6 +15,7 @@ export default function Dashboard() {
   const {
     topTracks,
     topArtists,
+    topAlbums,
     mostPlayed,
     playlists,
     loading,
@@ -80,6 +82,7 @@ export default function Dashboard() {
       {!loading && !error && (
         <div className="dashboard-grid">
           <TopTracks tracks={topTracks} title="Top 5 Tracks" />
+          <TopAlbums albums={topAlbums} />
           <TopArtists artists={topArtists} />
           <TopTracks tracks={mostPlayed} title="Most Played" />
           <Playlists playlists={playlists} />

@@ -6,6 +6,7 @@ interface Props {
 }
 
 const OPTIONS: { label: string; value: TimeRange }[] = [
+  { label: 'Last 7 days', value: 'one_week' },
   { label: 'Last 4 weeks', value: 'short_term' },
   { label: 'Last 6 months', value: 'medium_term' },
   { label: 'All time', value: 'long_term' },

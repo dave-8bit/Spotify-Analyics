@@ -3,6 +3,7 @@ import {
   getTop5MostPlayed,
   getTop5Tracks,
   getTop5Artists,
+  getTop5Albums,
   getRecentlyPlayed,
   syncAndGetPlaylists,
   getPlaylistWithTracks,
@@ -46,7 +47,7 @@ function handleAnalyticsError(
   }
 
   if (err instanceof SpotifyAPIError && err.status) {
-    res.status(err.status).json({ error: defaultMessage });
+    res.status(err.status).json({ error: err.message || defaultMessage });
     return;
   }
 
@@ -76,6 +77,19 @@ router.get("/top-artists", async (req: Request, res: Response) => {
     res.json({ data });
   } catch (err) {
     handleAnalyticsError(res, err, "Failed to fetch top artists", "top-artists");
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /analytics/top-albums
+// ---------------------------------------------------------------------------
+router.get("/top-albums", async (req: Request, res: Response) => {
+  try {
+    const timeRange = validateTimeRange(req.query.time_range);
+    const data = await getTop5Albums(getSession(req).userId!, timeRange);
+    res.json({ data });
+  } catch (err) {
+    handleAnalyticsError(res, err, "Failed to fetch top albums", "top-albums");
   }
 });
 

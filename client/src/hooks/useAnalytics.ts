@@ -4,15 +4,17 @@ import type { TimeRange } from '../types';
 import {
   getTopTracks,
   getTopArtists,
+  getTopAlbums,
   getMostPlayed,
   getRecentlyPlayed,
   getPlaylists,
 } from '../api';
-import type { Track, Artist, Playlist, RecentTrack } from '../types';
+import type { Track, Artist, Album, Playlist, RecentTrack } from '../types';
 
 interface AnalyticsState {
   topTracks: Track[];
   topArtists: Artist[];
+  topAlbums: Album[];
   mostPlayed: Track[];
   recentlyPlayed: RecentTrack[];
   playlists: Playlist[];
@@ -23,6 +25,7 @@ interface AnalyticsState {
 const initialState: AnalyticsState = {
   topTracks: [],
   topArtists: [],
+  topAlbums: [],
   mostPlayed: [],
   recentlyPlayed: [],
   playlists: [],
@@ -37,10 +40,11 @@ export function useAnalytics(timeRange: TimeRange, enabled = true) {
     setState((prev) => ({ ...prev, loading: true, error: null }));
   // All that i am trying to fetch for now possible updates can come later.
     try {
-      const [topTracks, topArtists, mostPlayed, recentlyPlayed, playlists] =
+      const [topTracks, topArtists, topAlbums, mostPlayed, recentlyPlayed, playlists] =
         await Promise.all([
           getTopTracks(timeRange),
           getTopArtists(timeRange),
+          getTopAlbums(timeRange),
           getMostPlayed(),
           getRecentlyPlayed(),
           getPlaylists(),
@@ -49,6 +53,7 @@ export function useAnalytics(timeRange: TimeRange, enabled = true) {
       setState({
         topTracks,
         topArtists,
+        topAlbums,
         mostPlayed,
         recentlyPlayed,
         playlists,

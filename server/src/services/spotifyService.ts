@@ -214,8 +214,14 @@ export interface SpotifyTrack {
   name: string;
   artists: Array<{ id: string; name: string }>;
   album: {
+    id: string;
     name: string;
-    images: Array<{ url: string; width: number; height: number }>;
+    images?: Array<{ url: string; width: number; height: number }>;
+    artists?: Array<{ id: string; name: string }>;
+    release_date?: string;
+    total_tracks?: number;
+    popularity?: number;
+    external_urls: { spotify: string };
   };
   duration_ms: number;
   popularity: number;

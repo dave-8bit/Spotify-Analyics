@@ -49,6 +49,18 @@ export interface PlaylistDetail extends Playlist {
   tracks: PlaylistTrack[];
 }
 
+export interface Album {
+  rank: number;
+  albumId: string;
+  name: string;
+  artist: string;
+  imageUrl: string | null;
+  releaseDate: string | null;
+  totalTracks: number;
+  popularity: number;
+  spotifyUrl: string;
+}
+
 export interface RecentTrack {
   trackId: string;
   name: string;
@@ -58,7 +70,7 @@ export interface RecentTrack {
   playedAt: string;
 }
 
-export type TimeRange = 'short_term' | 'medium_term' | 'long_term';
+export type TimeRange = 'one_week' | 'short_term' | 'medium_term' | 'long_term';
 
 export interface User {
   spotifyId: string;
