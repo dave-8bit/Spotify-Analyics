@@ -49,6 +49,7 @@ function Login() {
 function ErrorPage() {
   const params = new URLSearchParams(window.location.search);
   const reason = params.get('reason') ?? 'unknown';
+  const detail = params.get('detail');
 
   return (
     <div style={{
@@ -59,9 +60,16 @@ function ErrorPage() {
       height: '100vh',
       background: '#0a0a0a',
       gap: '1rem',
+      padding: '1rem',
+      textAlign: 'center',
     }}>
       <h1 style={{ color: '#ff6b6b' }}>Something went wrong</h1>
       <p style={{ color: '#777' }}>Reason: {reason}</p>
+      {detail ? (
+        <p style={{ color: '#aaa', maxWidth: '36rem', lineHeight: 1.6 }}>
+          {detail}
+        </p>
+      ) : null}
       <a href="/" style={{ color: '#1db954' }}>Go back</a>
     </div>
   );

@@ -161,10 +161,43 @@ router.get("/spotify/callback", async (req: Request, res: Response) => {
 
     return res.redirect(`${frontendUrl}/dashboard`);
   } catch (err) {
+    const { reason, detail } = getAuthErrorDetails(err);
     console.error("[auth/callback] Error:", err);
-    return res.redirect(`${frontendUrl}/error?reason=auth_failed`);
+    const query = new URLSearchParams({ reason, ...(detail ? { detail } : {}) }).toString();
+    return res.redirect(`${frontendUrl}/error?${query}`);
   }
 });
+
+function getAuthErrorDetails(err: unknown) {
+  if (axios.isAxiosError(err)) {
+    const status = err.response?.status;
+    const responseData = err.response?.data;
+    const bodyMessage =
+      typeof responseData === "string"
+        ? responseData
+        : responseData?.error_description ??
+          responseData?.error?.message ??
+          responseData?.error ??
+          undefined;
+
+    const message = bodyMessage ?? err.message ?? "Unknown Spotify error";
+
+    if (status === 403) {
+      const detail = message.includes("premium")
+        ? "Spotify API rejected the request because the app owner requires an active Premium subscription. Use a Spotify Premium account or app owner with access."
+        : message;
+      return { reason: "spotify_forbidden", detail };
+    }
+
+    if (status === 401) {
+      return { reason: "spotify_unauthorized", detail: message };
+    }
+
+    return { reason: "auth_failed", detail: message };
+  }
+
+  return { reason: "auth_failed", detail: String(err) };
+}
 
 // --- GET /auth/me ---
 router.get("/me", async (req: Request, res: Response) => {

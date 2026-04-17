@@ -76,7 +76,11 @@ export function useAnalytics(timeRange: TimeRange, enabled = true) {
 
   useEffect(() => {
     if (!enabled) return;
-    fetchAll();
+    const timeoutId = setTimeout(() => {
+      void fetchAll();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [fetchAll, enabled]);
 
   return { ...state, refetch: fetchAll };
