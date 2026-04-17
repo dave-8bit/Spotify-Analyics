@@ -14,7 +14,7 @@ const router = Router();
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID!;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET!;
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI!;
-const DEFAULT_FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
+const DEFAULT_FRONTEND_URL = process.env.FRONTEND_URL ?? "https://spotify-analyics.onrender.com";
 
 // ---------------------------------------------------------------------------
 // Session helper
